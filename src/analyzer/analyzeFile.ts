@@ -1,33 +1,36 @@
 import * as vscode from 'vscode';
 import { TreeSitterParser } from '../parsing/TreeSitterParser';
 import { fatControllerRule } from '../rules/fatControllerRule';
+import { complexityRule } from '../rules/complexityRule';
+import { directDbAccessRule } from '../rules/directDbAccessRule';
 
 export function analyzeFile(document: vscode.TextDocument): vscode.Diagnostic[] {
-    // 1. Parsing file menjadi AST
     const rootNode = TreeSitterParser.parse(document.getText());
     if (!rootNode) return [];
 
     const diagnostics: vscode.Diagnostic[] = [];
     
-    // 2. Jalankan Rule (Fat Controller)
-    const violations = fatControllerRule.check(rootNode, document);
+    // Daftarkan semua rule yang aktif
+    const rules = [
+        fatControllerRule,
+        complexityRule,
+        directDbAccessRule
+    ];
 
-    // 3. Konversi pelanggaran menjadi Diagnostic VS Code
+    // Jalankan setiap rule secara independen
+    let violations: any[] = [];
+    for (const rule of rules) {
+        violations = [...violations, ...rule.check(rootNode, document)];
+    }
+
+    // Translasi hasil ke format visual VS Code
     for (const v of violations) {
-        // Tree-sitter menggunakan row/column 0-indexed, sesuai dengan VS Code
         const range = new vscode.Range(
-            v.node.startPosition.row,
-            v.node.startPosition.column,
-            v.node.endPosition.row,
-            v.node.endPosition.column
+            v.node.startPosition.row, v.node.startPosition.column,
+            v.node.endPosition.row, v.node.endPosition.column
         );
 
-        const diagnostic = new vscode.Diagnostic(
-            range,
-            v.message,
-            v.severity
-        );
-        
+        const diagnostic = new vscode.Diagnostic(range, v.message, v.severity);
         diagnostic.code = v.code;
         diagnostic.source = 'LaravelCleanArch';
         diagnostics.push(diagnostic);

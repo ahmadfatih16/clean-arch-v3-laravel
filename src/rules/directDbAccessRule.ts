@@ -1,0 +1,34 @@
+import * as vscode from 'vscode';
+import { Rule, RuleViolation } from './types';
+
+export const directDbAccessRule: Rule = {
+    name: 'Direct DB Access',
+    check(rootNode: any, document: vscode.TextDocument): RuleViolation[] {
+        const violations: RuleViolation[] = [];
+        const normalizedPath = document.uri.fsPath.replace(/\\/g, '/');
+        if (!normalizedPath.includes('app/Http/Controllers/')) return violations;
+
+        function traverse(node: any) {
+            if (node.type === 'scoped_call_expression' || node.type === 'member_call_expression') {
+                const methodText = node.childForFieldName('name')?.text || '';
+                const scopeText = node.childForFieldName('scope')?.text || node.childForFieldName('object')?.text || '';
+                
+                const dbPatterns = ['create', 'update', 'delete', 'where', 'find', 'findOrFail', 'save', 'all', 'table', 'get', 'first', 'pluck', 'paginate'];
+                
+                if (dbPatterns.includes(methodText) || scopeText === 'DB') {
+                    violations.push({
+                        node: node,
+                        message: `[Arsitektur] Pelanggaran Clean Architecture: Pemanggilan database '${methodText}' tidak diizinkan di Controller. Harus melalui Service/Repository.`,
+                        code: 'DIRECT_DB_ACCESS',
+                        severity: vscode.DiagnosticSeverity.Error
+                    });
+                }
+            }
+
+            for (let i = 0; i < node.childCount; i++) traverse(node.child(i));
+        }
+
+        traverse(rootNode);
+        return violations;
+    }
+};
