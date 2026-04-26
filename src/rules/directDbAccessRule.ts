@@ -8,6 +8,8 @@ export const directDbAccessRule: Rule = {
         const normalizedPath = document.uri.fsPath.replace(/\\/g, '/');
         if (!normalizedPath.includes('app/Http/Controllers/')) return violations;
 
+        const dbPenalizedLines = new Set<number>(); // Tracker baris
+
         function traverse(node: any) {
             if (node.type === 'scoped_call_expression' || node.type === 'member_call_expression') {
                 const methodText = node.childForFieldName('name')?.text || '';
@@ -16,12 +18,18 @@ export const directDbAccessRule: Rule = {
                 const dbPatterns = ['create', 'update', 'delete', 'where', 'find', 'findOrFail', 'save', 'all', 'table', 'get', 'first', 'pluck', 'paginate'];
                 
                 if (dbPatterns.includes(methodText) || scopeText === 'DB') {
-                    violations.push({
-                        node: node,
-                        message: `[Arsitektur] Pelanggaran Clean Architecture: Pemanggilan database '${methodText}' tidak diizinkan di Controller. Harus melalui Service/Repository.`,
-                        code: 'DIRECT_DB_ACCESS',
-                        severity: vscode.DiagnosticSeverity.Error
-                    });
+                    const line = node.startPosition.row;
+                    
+                    // Hanya catat pelanggaran jika baris ini belum pernah kena penalti
+                    if (!dbPenalizedLines.has(line)) {
+                        violations.push({
+                            node: node,
+                            message: `[Arsitektur] Pelanggaran Clean Architecture: Pemanggilan database ('${methodText}') tidak diizinkan di Controller. Ekstrak ke Service.`,
+                            code: 'DIRECT_DB_ACCESS',
+                            severity: vscode.DiagnosticSeverity.Error
+                        });
+                        dbPenalizedLines.add(line);
+                    }
                 }
             }
 

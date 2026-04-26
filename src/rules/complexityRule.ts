@@ -23,12 +23,11 @@ export const complexityRule: Rule = {
                         'foreach_statement': 2, 'for_statement': 2, 'while_statement': 2
                     };
 
+                    // Hanya berikan skor pada Control Flow (Logika bersarang)
                     if (logicWeights[childNode.type] !== undefined) {
                         cognitiveScore += logicWeights[childNode.type] + currentDepth;
                         nextDepth++;
                     }
-
-                    if (childNode.type === 'assignment_expression') cognitiveScore += 1;
 
                     for (let i = 0; i < childNode.childCount; i++) {
                         calculateComplexity(childNode.child(i), nextDepth);
