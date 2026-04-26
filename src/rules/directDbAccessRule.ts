@@ -24,7 +24,7 @@ export const directDbAccessRule: Rule = {
                     if (!dbPenalizedLines.has(line)) {
                         violations.push({
                             node: node,
-                            message: `[Arsitektur] Pelanggaran Clean Architecture: Pemanggilan database ('${methodText}') tidak diizinkan di Controller. Ekstrak ke Service.`,
+                            message: `[Violation : Direct DB Access] Query '${methodText}' bocor di lapisan Controller. Akses data wajib dipindah ke Service/Repository.`,
                             code: 'DIRECT_DB_ACCESS',
                             severity: vscode.DiagnosticSeverity.Error
                         });

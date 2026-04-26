@@ -39,14 +39,14 @@ export const complexityRule: Rule = {
                 if (cognitiveScore > 10) {
                     violations.push({
                         node: methodNameNode || node,
-                        message: `[Kompleksitas] Method '${methodName}' sangat rumit (Skor Kognitif: ${cognitiveScore}). Pindahkan logika bisnis ini ke Service Layer.`,
+                        message: `[Violation : High Complexity] Method '${methodName}' memiliki terlalu banyak logika bersarang (if/loop). Pindahkan logika bisnis ini ke Service Layer.`,
                         code: 'HIGH_COGNITIVE_COMPLEXITY',
                         severity: vscode.DiagnosticSeverity.Error
                     });
                 } else if (cognitiveScore > 5) {
                     violations.push({
                         node: methodNameNode || node,
-                        message: `[Kompleksitas] Method '${methodName}' mulai rumit (Skor: ${cognitiveScore}).`,
+                        message: `[Violation : High Complexity] Method '${methodName}' mulai sulit dipahami akibat tumpukan kondisi logika. Pertimbangkan refactor ke Service.`,
                         code: 'WARNING_COGNITIVE_COMPLEXITY',
                         severity: vscode.DiagnosticSeverity.Warning
                     });

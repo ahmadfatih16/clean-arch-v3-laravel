@@ -22,7 +22,7 @@ export const fatControllerRule: Rule = {
                     if (methods.length > 7) {
                         violations.push({
                             node: classNameNode || node,
-                            message: `[God Object] Controller '${className}' memiliki terlalu banyak tanggung jawab (${methods.length} method). Batas rekomendasi adalah 7.`,
+                            message: `[Violation : Fat Controller] Class '${className}' memiliki ${methods.length} method (Batas wajar: 7). Pecah ke class lain agar lebih spesifik.`,
                             code: 'GOD_CONTROLLER',
                             severity: vscode.DiagnosticSeverity.Warning
                         });
@@ -33,9 +33,10 @@ export const fatControllerRule: Rule = {
                         const lineCount = methodNode.endPosition.row - methodNode.startPosition.row + 1;
                         if (lineCount > 40) {
                             const methodNameNode = methodNode.childForFieldName('name');
+                            const methodName = methodNameNode ? methodNameNode.text : 'unknown';
                             violations.push({
                                 node: methodNameNode || methodNode,
-                                message: `[Fat Method] Method kepanjangan (${lineCount} baris). Idealnya Controller hanya berisi pendelegasian request.`,
+                                message: `[Violation : Fat Controller] Method '${methodName}' terlalu panjang (${lineCount} baris). Controller idealnya hanya untuk routing/delegasi.`,
                                 code: 'FAT_CONTROLLER_LENGTH',
                                 severity: vscode.DiagnosticSeverity.Information
                             });
