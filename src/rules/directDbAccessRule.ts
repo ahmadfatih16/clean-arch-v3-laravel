@@ -8,7 +8,7 @@ export const directDbAccessRule: Rule = {
         const normalizedPath = document.uri.fsPath.replace(/\\/g, '/');
         if (!normalizedPath.includes('app/Http/Controllers/')) return violations;
 
-        const dbPenalizedLines = new Set<number>(); // Tracker baris
+        const dbPenalizedLines = new Set<number>();
 
         function traverse(node: any) {
             if (node.type === 'scoped_call_expression' || node.type === 'member_call_expression') {
@@ -17,14 +17,16 @@ export const directDbAccessRule: Rule = {
                 
                 const dbPatterns = ['create', 'update', 'delete', 'where', 'find', 'findOrFail', 'save', 'all', 'table', 'get', 'first', 'pluck', 'paginate'];
                 
-                if (dbPatterns.includes(methodText) || scopeText === 'DB') {
+                // 🔥 PERBAIKAN: Abaikan pemanggilan method jika berasal dari object Request
+                const isRequestObject = scopeText === '$request' || scopeText === 'request()';
+                
+                if (!isRequestObject && (dbPatterns.includes(methodText) || scopeText === 'DB')) {
                     const line = node.startPosition.row;
                     
-                    // Hanya catat pelanggaran jika baris ini belum pernah kena penalti
                     if (!dbPenalizedLines.has(line)) {
                         violations.push({
                             node: node,
-                            message: `[Violation : Direct DB Access] Query '${methodText}' bocor di lapisan Controller. Akses data wajib dipindah ke Service/Repository.`,
+                            message: `[Violation : Direct DB Access] Kueri '${methodText}' bocor di lapisan Controller. Akses data wajib dipindah ke Service/Repository.`,
                             code: 'DIRECT_DB_ACCESS',
                             severity: vscode.DiagnosticSeverity.Error
                         });
