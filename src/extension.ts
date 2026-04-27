@@ -23,6 +23,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Listener untuk dokumen
     context.subscriptions.push(
         vscode.workspace.onDidOpenTextDocument(doc => updateDiagnostics(doc, diagnosticCollection)),
+        vscode.workspace.onDidChangeTextDocument(event => updateDiagnostics(event.document, diagnosticCollection)),
         vscode.workspace.onDidSaveTextDocument(doc => updateDiagnostics(doc, diagnosticCollection))
     );
 
