@@ -1,38 +1,49 @@
 import * as vscode from 'vscode';
-import { TreeSitterParser } from './parsing/TreeSitterParser';
 import { analyzeFile } from './analyzer/analyzeFile';
+import { CleanArchCodeActionProvider } from './providers/CleanArchCodeActionProvider';
+import { RefactorEngine } from './engine/RefactorEngine';
+// 👇 1. Pastikan kamu meng-import class Parser-mu
+import { TreeSitterParser } from './parsing/TreeSitterParser'; 
 
+// 👇 2. Tambahkan kata 'async' di depan fungsi activate
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('🚀 Laravel Clean Architecture Refactor is now active!');
+    
+    // 👇 3. NYALAKAN MESIN PARSER DI SINI (Tunggu sampai siap)
+    try {
+        // 👇 Masukkan context.extensionUri ke dalam tanda kurung
+        await TreeSitterParser.init(context.extensionUri); 
+        console.log("✅ Tree-sitter Parser berhasil diinisialisasi!");
+    } catch (error) {
+        console.error("❌ Gagal memuat parser:", error);
+        return; // Hentikan ekstensi jika parser gagal dimuat
+    }
 
-    // 1. Inisialisasi Mesin Parser
-    await TreeSitterParser.init(context.extensionUri);
-
-    // 2. Buat Koleksi Diagnostic (untuk menampung garis bawah error/warning)
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('laravel-clean-arch');
 
-    // Fungsi pembantu untuk memicu analisis
-    const doAnalyze = (document: vscode.TextDocument) => {
-        if (document.languageId === 'php') {
-            const diagnostics = analyzeFile(document);
-            diagnosticCollection.set(document.uri, diagnostics);
-        }
-    };
-
-    // 3. Event Listeners: Jalankan analisis otomatis
+    // Listener untuk dokumen
     context.subscriptions.push(
-        // Saat file dibuka
-        vscode.workspace.onDidOpenTextDocument(doc => doAnalyze(doc)),
-        // Saat file disimpan
-        vscode.workspace.onDidSaveTextDocument(doc => doAnalyze(doc)),
-        // (Opsional) Saat sedang mengetik (real-time)
-        vscode.workspace.onDidChangeTextDocument(e => doAnalyze(e.document))
+        vscode.workspace.onDidOpenTextDocument(doc => updateDiagnostics(doc, diagnosticCollection)),
+        vscode.workspace.onDidSaveTextDocument(doc => updateDiagnostics(doc, diagnosticCollection))
     );
 
-    // Jalankan analisis untuk file yang sudah terbuka saat extension baru nyala
-    if (vscode.window.activeTextEditor) {
-        doAnalyze(vscode.window.activeTextEditor.document);
-    }
+    // Registrasi Code Action Provider (Ikon Lampu Bohlam)
+    context.subscriptions.push(
+        vscode.languages.registerCodeActionsProvider('php', new CleanArchCodeActionProvider(), {
+            providedCodeActionKinds: CleanArchCodeActionProvider.providedCodeActionKinds
+        })
+    );
+
+    // Registrasi Command Eksekusi Refactor yang memanggil Engine
+    context.subscriptions.push(
+        vscode.commands.registerCommand('laravel-clean-arch.refactorToService', async (document: vscode.TextDocument, diagnostic: vscode.Diagnostic) => {
+            await RefactorEngine.extractToService(document, diagnostic);
+        })
+    );
 }
 
-export function deactivate() {}
+function updateDiagnostics(document: vscode.TextDocument, collection: vscode.DiagnosticCollection) {
+    if (document.languageId === 'php') {
+        const diagnostics = analyzeFile(document);
+        collection.set(document.uri, diagnostics);
+    }
+}
