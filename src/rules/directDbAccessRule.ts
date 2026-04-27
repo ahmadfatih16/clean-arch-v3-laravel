@@ -3,9 +3,11 @@ import { Rule, RuleViolation } from './types';
 
 export const directDbAccessRule: Rule = {
     name: 'Direct DB Access',
+
     check(rootNode: any, document: vscode.TextDocument): RuleViolation[] {
         const violations: RuleViolation[] = [];
         const normalizedPath = document.uri.fsPath.replace(/\\/g, '/');
+
         if (!normalizedPath.includes('app/Http/Controllers/')) return violations;
 
         const DB_SCOPES = new Set(['DB']);
@@ -16,9 +18,25 @@ export const directDbAccessRule: Rule = {
             'compact', 'collect', 'config', 'app', 'resolve',
         ]);
 
+        const NON_MODEL_CLASSES = new Set([
+            'Str', 'Carbon'
+        ]);
+
+        // 🔥 whitelist model sederhana (hindari false positive)
+        const KNOWN_MODEL_HINTS = new Set<string>([
+            'User',
+            'Post',
+            'Order',
+            'Product',
+            'Category',
+            'Transaction',
+        ]);
+
         const modelInstanceVars = new Map<string, string>();
 
-        // ── Helpers ───────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────
+        // HELPERS
+        // ─────────────────────────────────────────────
 
         function isPascalCase(t: string): boolean {
             return /^[A-Z][a-zA-Z0-9_]*$/.test(t);
@@ -26,9 +44,9 @@ export const directDbAccessRule: Rule = {
 
         function resolveRootScope(node: any): string {
             if (!node) return '';
+
             switch (node.type) {
                 case 'scoped_call_expression':
-                    // Coba field 'scope', fallback ke anak pertama bertipe 'name'
                     return (
                         node.childForFieldName('scope')?.text ??
                         [...Array(node.childCount)]
@@ -36,14 +54,19 @@ export const directDbAccessRule: Rule = {
                             .find((c: any) => c.type === 'name')?.text ??
                         ''
                     );
+
                 case 'member_call_expression':
                     return resolveRootScope(node.childForFieldName('object'));
+
                 case 'variable_name':
                     return node.text ?? '';
+
                 case 'function_call_expression':
                     return `__fn:${node.childForFieldName('function')?.text ?? ''}`;
+
                 case 'name':
                     return node.text ?? '';
+
                 default:
                     return node.text ?? '';
             }
@@ -51,50 +74,73 @@ export const directDbAccessRule: Rule = {
 
         function isEloquentRoot(root: string): boolean {
             if (!root) return false;
-            if (root.startsWith('__fn:')) return !NON_MODEL_ROOTS.has(root.slice(5));
+
+            if (root.startsWith('__fn:')) {
+                return !NON_MODEL_ROOTS.has(root.slice(5));
+            }
+
             if (DB_SCOPES.has(root)) return true;
-            if (root.startsWith('$')) return modelInstanceVars.has(root);
+
+            if (root.startsWith('$')) {
+                return modelInstanceVars.has(root);
+            }
+
             if (NON_MODEL_ROOTS.has(root)) return false;
-            return isPascalCase(root);
+            if (NON_MODEL_CLASSES.has(root)) return false;
+
+            // 🔥 FIX: hanya model yang dikenal
+            if (isPascalCase(root)) {
+                return KNOWN_MODEL_HINTS.has(root);
+            }
+
+            return false;
         }
 
-        // ── Pass 1 ────────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────
+        // PASS 1 — DETEKSI INSTANCE MODEL
+        // ─────────────────────────────────────────────
 
         function collectModelInstances(node: any) {
             if (node.type === 'assignment_expression') {
-                const leftNode  = node.childForFieldName('left');
+                const leftNode = node.childForFieldName('left');
                 const rightNode = node.childForFieldName('right');
 
                 if (leftNode?.type === 'variable_name' && rightNode) {
                     const varName = leftNode.text;
 
-                    // Pola A: $var = new ModelName(...)
-                    // Pakai regex pada .text karena field 'class_name' tidak konsisten
-                    // di semua versi tree-sitter-php
                     const newMatch = rightNode.text?.match(/^new\s+\\?([A-Z][a-zA-Z0-9_\\]*)/);
                     if (newMatch) {
                         const className = newMatch[1].split('\\').pop()!;
-                        modelInstanceVars.set(varName, className);
+                        if (KNOWN_MODEL_HINTS.has(className)) {
+                            modelInstanceVars.set(varName, className);
+                        }
                     }
-                    // Pola B: $var = Model::method() atau chain Eloquent
+
                     else if (
                         rightNode.type === 'scoped_call_expression' ||
                         rightNode.type === 'member_call_expression'
                     ) {
                         const root = resolveRootScope(rightNode);
+
                         if (isEloquentRoot(root)) {
                             modelInstanceVars.set(varName, modelInstanceVars.get(root) ?? root);
                         }
                     }
                 }
             }
-            for (let i = 0; i < node.childCount; i++) collectModelInstances(node.child(i));
+
+            for (let i = 0; i < node.childCount; i++) {
+                collectModelInstances(node.child(i));
+            }
         }
 
-        // ── Pass 2 ────────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────
+        // PASS 2 — DETEKSI VIOLATION
+        // ─────────────────────────────────────────────
 
         function getObjectRange(node: any): { start: number; end: number } | null {
             if (node.type !== 'member_call_expression') return null;
+
             const obj = node.childForFieldName('object');
             return obj ? { start: obj.startIndex, end: obj.endIndex } : null;
         }
@@ -111,24 +157,27 @@ export const directDbAccessRule: Rule = {
                 const isChainObject =
                     parentObjRange !== null &&
                     node.startIndex === parentObjRange.start &&
-                    node.endIndex   === parentObjRange.end;
+                    node.endIndex === parentObjRange.end;
 
                 if (!isChainObject) {
                     const root = resolveRootScope(node);
+                    const methodName = node.childForFieldName('name')?.text ?? '';
 
                     if (isEloquentRoot(root)) {
                         const originModel = modelInstanceVars.get(root);
-                        const scopeLabel  = originModel
+                        const scopeLabel = originModel
                             ? `${root} (instance of ${originModel})`
                             : root;
-                        const methodText  = node.childForFieldName('name')?.text ?? '';
+
+                        const isDbTable = root === 'DB' && methodName === 'table';
+
+                        const message = isDbTable
+                            ? `[Violation : Direct DB Access] Penggunaan DB::table() di Controller tidak diperbolehkan.`
+                            : `[Violation : Direct DB Access] Kueri '${methodName}' pada '${scopeLabel}' bocor di Controller. Pindahkan ke Service/Repository.`;
 
                         violations.push({
                             node: node.childForFieldName('name') ?? node,
-                            message:
-                                `[Violation : Direct DB Access] Kueri '${methodText}' pada ` +
-                                `'${scopeLabel}' bocor di lapisan Controller. ` +
-                                `Akses data wajib dipindah ke Service/Repository.`,
+                            message,
                             code: 'DIRECT_DB_ACCESS',
                             severity: vscode.DiagnosticSeverity.Error,
                         });
@@ -137,13 +186,17 @@ export const directDbAccessRule: Rule = {
             }
 
             const objRange = getObjectRange(node);
+
             for (let i = 0; i < node.childCount; i++) {
                 traverse(node.child(i), objRange);
             }
         }
 
+        // ─────────────────────────────────────────────
+
         collectModelInstances(rootNode);
         traverse(rootNode);
+
         return violations;
     },
 };
