@@ -7,7 +7,6 @@ export const fatControllerRule: Rule = {
         const violations: RuleViolation[] = [];
         const normalizedPath = document.uri.fsPath.replace(/\\/g, '/');
         
-        // Hanya jalankan analisis di dalam folder Controllers
         if (!normalizedPath.includes('app/Http/Controllers/')) return violations;
 
         function traverse(node: any) {
@@ -15,7 +14,9 @@ export const fatControllerRule: Rule = {
                 const classNameNode = node.childForFieldName('name');
                 const className = classNameNode ? classNameNode.text : 'unknown';
                 
-                // 1. Faktor: Class Volume (Lines of Code)
+                // =========================
+                // 1. Class Length
+                // =========================
                 const classLineCount = node.endPosition.row - node.startPosition.row + 1;
                 if (classLineCount > 150) {
                     violations.push({
@@ -28,9 +29,17 @@ export const fatControllerRule: Rule = {
 
                 const classBody = node.children.find((c: any) => c.type === 'declaration_list');
                 if (classBody) {
-                    const methods = classBody.children.filter((c: any) => c.type === 'method_declaration');
-                    
-                    // 2. Faktor: Jumlah Method (God Object)
+
+                    // 🔥 Exclude constructor dari God Controller
+                    const methods = classBody.children.filter((c: any) => {
+                        if (c.type !== 'method_declaration') return false;
+                        const name = c.childForFieldName('name')?.text;
+                        return name !== '__construct';
+                    });
+
+                    // =========================
+                    // 2. God Controller
+                    // =========================
                     if (methods.length > 7) {
                         violations.push({
                             node: classNameNode || node,
@@ -40,28 +49,54 @@ export const fatControllerRule: Rule = {
                         });
                     }
 
-                    for (const methodNode of methods) {
+                    // =========================
+                    // 3. Method Analysis
+                    // =========================
+                    const allMethods = classBody.children.filter((c: any) => c.type === 'method_declaration');
+
+                    for (const methodNode of allMethods) {
                         const methodNameNode = methodNode.childForFieldName('name');
                         const methodName = methodNameNode ? methodNameNode.text : 'unknown';
 
-                        // 3. Faktor: Method Length
-                        const lineCount = methodNode.endPosition.row - methodNode.startPosition.row + 1;
-                        if (lineCount > 30) {
-                            violations.push({
-                                node: methodNameNode || methodNode,
-                                message: `[Violation : Fat Controller] Method '${methodName}' terlalu panjang (${lineCount} baris). Controller idealnya hanya untuk routing/delegasi.`,
-                                code: 'FAT_CONTROLLER_LENGTH',
-                                severity: vscode.DiagnosticSeverity.Information
+                        // 🔥 FIX: Hitung hanya BODY method
+                        const bodyNode = methodNode.childForFieldName('body');
+
+                        if (bodyNode) {
+                            const text = document.getText(
+                                new vscode.Range(
+                                    bodyNode.startPosition.row,
+                                    bodyNode.startPosition.column,
+                                    bodyNode.endPosition.row,
+                                    bodyNode.endPosition.column
+                                )
+                            );
+
+                            // 🔥 Ignore empty line & comment
+                            const lines = text.split('\n').filter(line => {
+                                const trimmed = line.trim();
+                                return trimmed !== '' && !trimmed.startsWith('//');
                             });
+
+                            const lineCount = lines.length;
+
+                            if (lineCount > 30) {
+                                violations.push({
+                                    node: methodNameNode || methodNode,
+                                    message: `[Violation : Fat Controller] Method '${methodName}' terlalu panjang (${lineCount} baris efektif). Controller idealnya hanya untuk routing/delegasi.`,
+                                    code: 'FAT_CONTROLLER_LENGTH',
+                                    severity: vscode.DiagnosticSeverity.Information
+                                });
+                            }
                         }
 
-                        // 4. Faktor: Dependency Injection (Constructor)
+                        // =========================
+                        // 4. Dependency Injection
+                        // =========================
                         if (methodName === '__construct') {
                             const parametersNode = methodNode.childForFieldName('parameters');
                             if (parametersNode) {
                                 let paramCount = 0;
                                 for (let j = 0; j < parametersNode.childCount; j++) {
-                                    // Menghitung parameter formal dalam constructor
                                     if (parametersNode.child(j).type.includes('parameter')) {
                                         paramCount++;
                                     }
@@ -79,7 +114,7 @@ export const fatControllerRule: Rule = {
                         }
                     }
                 }
-                return; // Stop rekursif untuk class ini
+                return;
             }
 
             for (let i = 0; i < node.childCount; i++) {
