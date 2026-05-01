@@ -21,7 +21,7 @@ export const fatControllerRule: Rule = {
                 if (classLineCount > 150) {
                     violations.push({
                         node: classNameNode || node,
-                        message: `[Violation : Fat Controller] Class '${className}' terlalu gemuk (${classLineCount} baris). Indikasi kuat penumpukan logika bisnis.`,
+                        message: `[Violation : Fat Controller] Class '${className}' terlalu gemuk (${classLineCount} baris). Indikasi kuat penumpukan logika bisnis (Batas wajar: 150).`,
                         code: 'FAT_CONTROLLER_CLASS',
                         severity: vscode.DiagnosticSeverity.Warning
                     });
