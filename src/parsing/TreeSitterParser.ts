@@ -80,3 +80,7 @@ export class TreeSitterParser {
         }
     }
 }
+
+
+// Load WASM wajib menggunakan absolute path (__dirname).
+// File .wasm sudah dijamin berada di folder dist/ saat production berkat CopyWebpackPlugin.

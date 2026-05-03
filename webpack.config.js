@@ -63,3 +63,12 @@ const extensionConfig = {
 };
 
 module.exports = [ extensionConfig ];
+
+
+
+/**
+ * PENTING - RESOLUSI WEB-TREE-SITTER & WASM UNTUK BUILD VSIX:
+ * 1. web-tree-sitter harus masuk 'externals' agar tidak di-bundle webpack (dipanggil dari node_modules).
+ * 2. CopyWebpackPlugin bertugas menyalin file .wasm (core & parser) ke folder dist/.
+ * 3. Syarat wajib VSIX: 'web-tree-sitter' ada di 'dependencies' package.json dan 'node_modules' tidak ada di .vscodeignore.
+ */
