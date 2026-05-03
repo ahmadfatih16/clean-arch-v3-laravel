@@ -20,7 +20,8 @@ const extensionConfig = {
     libraryTarget: 'commonjs2'
   },
   externals: {
-    vscode: 'commonjs vscode'
+    vscode: 'commonjs vscode',
+    'web-tree-sitter': 'commonjs web-tree-sitter'
   },
   resolve: {
     extensions: ['.ts', '.js']
