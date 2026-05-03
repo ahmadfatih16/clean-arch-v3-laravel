@@ -18,7 +18,7 @@ export class RefactorEngine {
         const fullRange = badLine.range;
         const badCode = document.getText(fullRange);
 
-        // 🔥 DETEKSI MODEL DARI QUERY
+        // DETEKSI MODEL
         const modelMatch = badCode.match(/([A-Z][a-zA-Z0-9_]*)::/);
         const modelName = modelMatch ? modelMatch[1] : baseName;
 
@@ -41,26 +41,24 @@ export class RefactorEngine {
         try {
             const existing = await vscode.workspace.fs.readFile(serviceFilePath);
             serviceContent = Buffer.from(existing).toString('utf8');
+
+            if (
+                serviceContent.trim() === '' ||
+                !serviceContent.includes('class') ||
+                !serviceContent.includes(serviceName)
+            ) {
+                serviceContent = this.generateBaseService(modelName, serviceName);
+            }
+
         } catch {
             edit.createFile(serviceFilePath, { ignoreIfExists: true });
-
-            serviceContent = `<?php
-
-namespace App\\Services;
-
-use App\\Models\\${modelName};
-
-class ${serviceName}
-{
-}
-`;
+            serviceContent = this.generateBaseService(modelName, serviceName);
         }
 
         // ======================
-        // ADD METHOD IF NOT EXIST
+        // ADD METHOD (FIX FINAL)
         // ======================
         if (!serviceContent.includes(`function ${methodName}`)) {
-            const insertPos = serviceContent.lastIndexOf('}');
 
             const methodCode = `
     public function ${methodName}(${paramName})
@@ -69,10 +67,16 @@ class ${serviceName}
     }
 `;
 
-            const updatedContent =
-                serviceContent.slice(0, insertPos) +
-                methodCode +
-                serviceContent.slice(insertPos);
+            const lastClosingBraceIndex = serviceContent.lastIndexOf('}');
+
+            if (lastClosingBraceIndex === -1) {
+                serviceContent = this.generateBaseService(modelName, serviceName);
+            }
+
+            const before = serviceContent.substring(0, lastClosingBraceIndex);
+            const after = serviceContent.substring(lastClosingBraceIndex);
+
+            const updatedContent = before + methodCode + after;
 
             const fullDocRange = new vscode.Range(
                 new vscode.Position(0, 0),
@@ -83,35 +87,39 @@ class ${serviceName}
         }
 
         // ======================
-        // CONTROLLER REPLACE
+        // CONTROLLER REPLACE (INDENT FIX)
         // ======================
+        const indentation = badLine.text.match(/^\s*/)?.[0] || '';
+
         const controllerCall =
-            `return $this->${serviceVariableName}->${methodName}(${paramValue});`;
+            `${indentation}return $this->${serviceVariableName}->${methodName}(${paramValue});`;
 
         edit.replace(document.uri, fullRange, controllerCall);
 
         // ======================
-        // INSERT USE SERVICE (SAFE)
+        // INSERT USE SERVICE
         // ======================
         const text = document.getText();
+        const useStatement = `use App\\Services\\${serviceName};`;
 
-        if (!text.includes(`use App\\Services\\${serviceName}`)) {
+        if (!text.includes(useStatement)) {
             const useMatches = [...text.matchAll(/^use\s.+;/gm)];
 
             let insertPos: vscode.Position;
 
             if (useMatches.length > 0) {
                 const lastUse = useMatches[useMatches.length - 1];
-                insertPos = document.positionAt(lastUse.index! + lastUse[0].length + 1);
+                insertPos = document.positionAt(lastUse.index! + lastUse[0].length);
+                edit.insert(document.uri, insertPos, `\n${useStatement}`);
             } else {
-                insertPos = document.positionAt(text.indexOf('namespace') + 1);
+                const namespaceMatch = text.match(/^namespace\s.+;/m);
+                if (namespaceMatch) {
+                    insertPos = document.positionAt(
+                        namespaceMatch.index! + namespaceMatch[0].length
+                    );
+                    edit.insert(document.uri, insertPos, `\n\n${useStatement}`);
+                }
             }
-
-            edit.insert(
-                document.uri,
-                insertPos,
-                `use App\\Services\\${serviceName};\n`
-            );
         }
 
         // ======================
@@ -134,6 +142,22 @@ class ${serviceName}
         } else {
             vscode.window.showErrorMessage("Refactor gagal.");
         }
+    }
+
+    // ======================
+    // BASE SERVICE TEMPLATE
+    // ======================
+    private static generateBaseService(model: string, service: string) {
+        return `<?php
+
+namespace App\\Services;
+
+use App\\Models\\${model};
+
+class ${service}
+{
+}
+`;
     }
 
     // ======================
@@ -191,7 +215,7 @@ return $model->delete();`
             };
         }
 
-        if (code.includes('get')) {
+        if (code.includes('all') || code.includes('get')) {
             return {
                 methodName: `get${model}`,
                 paramName: '',

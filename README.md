@@ -1,71 +1,138 @@
-# laravel-clean-architecture-refactor README
+# Laravel Code Smell Detector
 
-This is the README for your extension "laravel-clean-architecture-refactor". After writing up a brief description, we recommend including the following sections.
-
-## Features
-
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+VS Code Extension untuk mendeteksi pelanggaran struktur kode berbasis *Clean Architecture* pada proyek Laravel, serta menyediakan mekanisme *auto-refactoring* untuk meningkatkan kualitas kode secara langsung di dalam editor.
 
 ---
 
-## Following extension guidelines
+## 🚀 Features
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+### 🔍 Code Smell Detection
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+Extension ini mampu mendeteksi tiga jenis code smell utama:
 
-## Working with Markdown
+- **Fat Controller**
+- **High Complexity**
+- **Direct Database Access**
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+Deteksi dilakukan menggunakan pendekatan **rule-based static analysis** berbasis **Abstract Syntax Tree (AST)**.
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+---
 
-## For more information
+### ⚙️ Auto Refactoring
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+- **Direct Database Access** → otomatis dipindahkan ke Service Layer  
+- **Fat Controller** → hanya *warning* & *suggestion*  
+- **High Complexity** → hanya *warning* & *suggestion*  
 
-**Enjoy!**
+---
+
+## 📊 Supported Rules
+
+Extension ini menggunakan pendekatan rule-based static analysis berbasis Abstract Syntax Tree (AST) untuk mendeteksi pelanggaran struktur kode berdasarkan prinsip Clean Architecture.
+
+### 1. Fat Controller
+
+Controller dikategorikan sebagai *Fat Controller* jika memenuhi indikator berikut:
+
+| Metrik             | Threshold |
+|--------------------|-----------|
+| Method Count       | > 7       |
+| Class LOC          | > 150     |
+| Method LOC         | > 30      |
+| Dependency Count   | > 4       |
+
+📌 Tujuan:
+Mendeteksi penumpukan tanggung jawab pada controller yang melanggar prinsip Single Responsibility Principle (SRP).
+
+---
+
+### 2. High Complexity
+
+Kompleksitas logika diukur menggunakan **Cyclomatic Complexity (CC)**.
+
+| Kondisi       | Kategori |
+|---------------|----------|
+| CC > 5        | Warning  |
+| CC > 10       | Error    |
+
+📌 Tujuan:
+Mengidentifikasi method dengan kompleksitas tinggi yang sulit dipahami, diuji, dan dipelihara.
+
+---
+
+### 3. Direct Database Access
+
+Code smell ini terjadi ketika controller mengakses database secara langsung tanpa melalui layer yang sesuai.
+
+#### Pola yang dideteksi:
+`php
+User::create($data);
+User::where(...)->update(...);
+
+DB::table('users')->get();
+
+---------------------------------------------------------------
+
+## 🧪 How to Use
+
+### 1. Install Extension
+- Buka Visual Studio Code  
+- Masuk ke menu Extensions  
+- Cari: **Laravel Code Smell Detector**  
+- Klik **Install**  
+- Tunggu hingga proses instalasi selesai  
+
+---
+
+### 2. Buka Project Laravel
+- Buka folder proyek Laravel di Visual Studio Code  
+- Pastikan struktur proyek sesuai standar Laravel  
+- Analisis difokuskan pada file controller  
+
+Contoh lokasi file yang dianalisis:
+app/Http/Controllers/UserController.php
+
+--- 
+
+### 3. Analisis Otomatis
+Extension akan berjalan secara otomatis ketika:
+- File PHP dibuka
+- File diubah (real-time analysis)
+Tidak diperlukan menjalankan perintah manual.
+
+---
+
+### 4. Lihat Hasil Deteksi
+Hasil analisis akan muncul sebagai:
+- 🔶 Warning → pelanggaran struktur kode
+- 🔴 Error → pelanggaran dengan tingkat kompleksitas tinggi
+Setiap diagnostic juga dilengkapi dengan rekomendasi perbaikan (suggestion).
+
+Ditampilkan di:
+- Editor (underline / highlight)
+- Panel Problems di VS Code
+
+---
+
+### 5. Gunakan Auto Refactor
+Untuk kasus Direct Database Access:
+- Arahkan cursor ke kode yang terdeteksi
+- Tekan Ctrl + .
+- Pilih Quick Fix
+
+Extension akan:
+- Memindahkan logika database ke service layer
+- Memperbaiki pemanggilan di controller
+
+
+---------------------------------------------------------------------
+
+
+## ⚙️ Requirements
+- Visual Studio Code
+- Proyek berbasis Laravel (PHP)
+
+
+## 👨‍💻 Author
+Ahmad Fatih Hibatillah
+Informatika - UIN Sunan Kalijaga Yogyakarta
