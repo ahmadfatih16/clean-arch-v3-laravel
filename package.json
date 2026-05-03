@@ -1,26 +1,31 @@
 {
-  "name": "laravel-clean-architecture-refactor",
-  "displayName": "Laravel Clean Architecture Refactor",
-  "description": "Laravel Clean Architecture Refactor",
+  "name": "laravel-code-smell-analyzer",
+  "displayName": "Laravel Code Smell Analyzer",
+  "description": "Analyze Laravel code to detect code smells and architectural violations based on Clean Architecture principles.",
+  "publisher": "your-publisher-name",
   "version": "0.0.1",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.116.0"
   },
   "categories": [
-    "Other"
+  "Linters",
+  "Programming Languages",
+  "Other"
+  ],
+  "keywords": [
+  "Laravel",
+  "Code Smell",
+  "Static Analysis",
+  "Clean Architecture",
+  "Refactoring",
+  "PHP"
   ],
   "activationEvents": [
     "*"
   ],
   "main": "./dist/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "laravel-clean-architecture-refactor.helloWorld",
-        "title": "Hello World"
-      }
-    ]
-  },
+  "contributes": {},
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "webpack",

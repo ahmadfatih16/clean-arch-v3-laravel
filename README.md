@@ -1,4 +1,15 @@
-# Laravel Code Smell Detector
+# Laravel Code Smell Analyzer
+> Detect code smells. Analyze structure. Improve Laravel code quality — directly in your editor.
+
+## ✨ Overview
+
+Laravel Code Smell Analyzer is a Visual Studio Code extension designed to help developers identify and improve code quality in Laravel projects.
+
+Using rule-based static analysis powered by Abstract Syntax Tree (AST), this extension detects common architectural issues and code smells such as Fat Controllers, High Complexity, and Direct Database Access.
+
+It also provides guided refactoring suggestions to help maintain clean, modular, and maintainable code.
+
+---
 
 VS Code Extension untuk mendeteksi pelanggaran struktur kode berbasis *Clean Architecture* pada proyek Laravel, serta menyediakan mekanisme *auto-refactoring* untuk meningkatkan kualitas kode secara langsung di dalam editor.
 
