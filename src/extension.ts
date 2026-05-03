@@ -40,6 +40,8 @@ export async function activate(context: vscode.ExtensionContext) {
             await RefactorEngine.extractToService(document, diagnostic);
         })
     );
+
+    console.log("Laravel Code Smell Analyzer ACTIVE");
 }
 
 function updateDiagnostics(document: vscode.TextDocument, collection: vscode.DiagnosticCollection) {

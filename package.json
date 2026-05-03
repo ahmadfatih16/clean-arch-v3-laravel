@@ -13,20 +13,20 @@
     "url": "https://github.com/ahmadfatih16/clean-arch-v3-laravel.git"
   },
   "categories": [
-  "Linters",
-  "Programming Languages",
-  "Other"
+    "Linters",
+    "Programming Languages",
+    "Other"
   ],
   "keywords": [
-  "Laravel",
-  "Code Smell",
-  "Static Analysis",
-  "Clean Architecture",
-  "Refactoring",
-  "PHP"
+    "Laravel",
+    "Code Smell",
+    "Static Analysis",
+    "Clean Architecture",
+    "Refactoring",
+    "PHP"
   ],
   "activationEvents": [
-    "*"
+    "onLanguage:php"
   ],
   "main": "./dist/extension.js",
   "contributes": {},
@@ -59,10 +59,7 @@
     "tree-sitter-php": "^0.24.2",
     "web-tree-sitter": "^0.26.8"
   },
-  "exclude": [
-    "node_modules",
-    "out",
-    "dist",
+   "exclude": [
     "src/test"
   ]
 }
