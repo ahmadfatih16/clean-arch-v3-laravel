@@ -2,11 +2,15 @@
   "name": "laravel-code-smell-analyzer",
   "displayName": "Laravel Code Smell Analyzer",
   "description": "Analyze Laravel code to detect code smells and architectural violations based on Clean Architecture principles.",
-  "publisher": "your-publisher-name",
+  "publisher": "vatech-dev",
   "version": "0.0.1",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.116.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ahmadfatih16/clean-arch-v3-laravel.git"
   },
   "categories": [
   "Linters",
