@@ -18,21 +18,29 @@ export const fatControllerRule: Rule = {
                 // 1. Class Length
                 // =========================
                 const classLineCount = node.endPosition.row - node.startPosition.row + 1;
+
                 if (classLineCount > 150) {
                     violations.push({
                         node: classNameNode || node,
-                        message: `[Violation : Fat Controller] Class '${className}' terlalu gemuk (${classLineCount} baris). Indikasi kuat penumpukan logika bisnis (Batas wajar: 150).`,
+                        message:
+                            `[Violation : Fat Controller] Class '${className}' terlalu gemuk (${classLineCount} baris). ` +
+                            `Indikasi kuat penumpukan logika bisnis (Batas wajar: 150). ` +
+                            `Saran: Pecah controller ini menjadi beberapa Single Action Controller ` +
+                            `(invokable) atau pindahkan sebagian besar logika bisnis ke dalam ` +
+                            `Service layer yang relevan.`,
                         code: 'FAT_CONTROLLER_CLASS',
                         severity: vscode.DiagnosticSeverity.Warning
                     });
                 }
 
                 const classBody = node.children.find((c: any) => c.type === 'declaration_list');
+
                 if (classBody) {
 
                     // 🔥 Exclude constructor dari God Controller
                     const methods = classBody.children.filter((c: any) => {
                         if (c.type !== 'method_declaration') return false;
+
                         const name = c.childForFieldName('name')?.text;
                         return name !== '__construct';
                     });
@@ -43,7 +51,13 @@ export const fatControllerRule: Rule = {
                     if (methods.length > 7) {
                         violations.push({
                             node: classNameNode || node,
-                            message: `[Violation : Fat Controller] Class '${className}' memiliki ${methods.length} method (Batas wajar: 7). Pecah ke class lain agar lebih spesifik.`,
+                            message:
+                                `[Violation : Fat Controller] Class '${className}' memiliki ` +
+                                `${methods.length} method (Batas wajar: 7). ` +
+                                `Indikasi controller menangani terlalu banyak tanggung jawab. ` +
+                                `Saran: Pisahkan fitur berdasarkan tanggung jawab bisnis ` +
+                                `ke controller yang lebih spesifik atau gunakan ` +
+                                `Single Action Controller untuk endpoint yang kompleks.`,
                             code: 'GOD_CONTROLLER',
                             severity: vscode.DiagnosticSeverity.Warning
                         });
@@ -52,16 +66,24 @@ export const fatControllerRule: Rule = {
                     // =========================
                     // 3. Method Analysis
                     // =========================
-                    const allMethods = classBody.children.filter((c: any) => c.type === 'method_declaration');
+                    const allMethods = classBody.children.filter(
+                        (c: any) => c.type === 'method_declaration'
+                    );
 
                     for (const methodNode of allMethods) {
-                        const methodNameNode = methodNode.childForFieldName('name');
-                        const methodName = methodNameNode ? methodNameNode.text : 'unknown';
 
-                        // 🔥 FIX: Hitung hanya BODY method
+                        const methodNameNode =
+                            methodNode.childForFieldName('name');
+
+                        const methodName = methodNameNode
+                            ? methodNameNode.text
+                            : 'unknown';
+
+                        // 🔥 Hitung hanya BODY method
                         const bodyNode = methodNode.childForFieldName('body');
 
                         if (bodyNode) {
+
                             const text = document.getText(
                                 new vscode.Range(
                                     bodyNode.startPosition.row,
@@ -74,7 +96,11 @@ export const fatControllerRule: Rule = {
                             // 🔥 Ignore empty line & comment
                             const lines = text.split('\n').filter(line => {
                                 const trimmed = line.trim();
-                                return trimmed !== '' && !trimmed.startsWith('//');
+
+                                return (
+                                    trimmed !== '' &&
+                                    !trimmed.startsWith('//')
+                                );
                             });
 
                             const lineCount = lines.length;
@@ -82,7 +108,13 @@ export const fatControllerRule: Rule = {
                             if (lineCount > 30) {
                                 violations.push({
                                     node: methodNameNode || methodNode,
-                                    message: `[Violation : Fat Controller] Method '${methodName}' terlalu panjang (${lineCount} baris efektif). Controller idealnya hanya untuk routing/delegasi.`,
+                                    message:
+                                        `[Violation : Fat Controller] Method '${methodName}' terlalu panjang ` +
+                                        `(${lineCount} baris efektif). Controller idealnya hanya untuk ` +
+                                        `routing/delegasi. ` +
+                                        `Saran: Ekstrak logika bisnis ke Service layer atau ` +
+                                        `private method terpisah agar controller lebih fokus ` +
+                                        `pada proses request dan response.`,
                                     code: 'FAT_CONTROLLER_LENGTH',
                                     severity: vscode.DiagnosticSeverity.Information
                                 });
@@ -93,19 +125,35 @@ export const fatControllerRule: Rule = {
                         // 4. Dependency Injection
                         // =========================
                         if (methodName === '__construct') {
-                            const parametersNode = methodNode.childForFieldName('parameters');
+
+                            const parametersNode =
+                                methodNode.childForFieldName('parameters');
+
                             if (parametersNode) {
+
                                 let paramCount = 0;
+
                                 for (let j = 0; j < parametersNode.childCount; j++) {
-                                    if (parametersNode.child(j).type.includes('parameter')) {
+
+                                    if (
+                                        parametersNode.child(j)
+                                            .type
+                                            .includes('parameter')
+                                    ) {
                                         paramCount++;
                                     }
                                 }
-                                
+
                                 if (paramCount > 4) {
                                     violations.push({
                                         node: methodNameNode || methodNode,
-                                        message: `[Violation : Fat Controller] Terlalu banyak dependency (${paramCount} layanan) di-inject. Indikasi class menangani terlalu banyak fitur.`,
+                                        message:
+                                            `[Violation : Fat Controller] Terlalu banyak dependency ` +
+                                            `(${paramCount} layanan) di-inject. ` +
+                                            `Indikasi class menangani terlalu banyak fitur. ` +
+                                            `Saran: Kurangi tanggung jawab controller dengan ` +
+                                            `memecah fitur ke service atau controller lain ` +
+                                            `agar dependency lebih terfokus dan mudah diuji.`,
                                         code: 'FAT_CONTROLLER_DEPENDENCY',
                                         severity: vscode.DiagnosticSeverity.Warning
                                     });
@@ -114,6 +162,7 @@ export const fatControllerRule: Rule = {
                         }
                     }
                 }
+
                 return;
             }
 

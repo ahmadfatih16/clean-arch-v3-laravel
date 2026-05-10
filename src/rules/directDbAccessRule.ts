@@ -43,9 +43,11 @@ export const directDbAccessRule: Rule = {
         }
 
         function resolveRootScope(node: any): string {
+
             if (!node) return '';
 
             switch (node.type) {
+
                 case 'scoped_call_expression':
                     return (
                         node.childForFieldName('scope')?.text ??
@@ -56,7 +58,9 @@ export const directDbAccessRule: Rule = {
                     );
 
                 case 'member_call_expression':
-                    return resolveRootScope(node.childForFieldName('object'));
+                    return resolveRootScope(
+                        node.childForFieldName('object')
+                    );
 
                 case 'variable_name':
                     return node.text ?? '';
@@ -73,6 +77,7 @@ export const directDbAccessRule: Rule = {
         }
 
         function isEloquentRoot(root: string): boolean {
+
             if (!root) return false;
 
             if (root.startsWith('__fn:')) {
@@ -88,7 +93,7 @@ export const directDbAccessRule: Rule = {
             if (NON_MODEL_ROOTS.has(root)) return false;
             if (NON_MODEL_CLASSES.has(root)) return false;
 
-            // 🔥 FIX: hanya model yang dikenal
+            // 🔥 hanya model yang dikenal
             if (isPascalCase(root)) {
                 return KNOWN_MODEL_HINTS.has(root);
             }
@@ -101,16 +106,29 @@ export const directDbAccessRule: Rule = {
         // ─────────────────────────────────────────────
 
         function collectModelInstances(node: any) {
+
             if (node.type === 'assignment_expression') {
+
                 const leftNode = node.childForFieldName('left');
                 const rightNode = node.childForFieldName('right');
 
-                if (leftNode?.type === 'variable_name' && rightNode) {
+                if (
+                    leftNode?.type === 'variable_name' &&
+                    rightNode
+                ) {
+
                     const varName = leftNode.text;
 
-                    const newMatch = rightNode.text?.match(/^new\s+\\?([A-Z][a-zA-Z0-9_\\]*)/);
+                    const newMatch =
+                        rightNode.text?.match(
+                            /^new\s+\\?([A-Z][a-zA-Z0-9_\\]*)/
+                        );
+
                     if (newMatch) {
-                        const className = newMatch[1].split('\\').pop()!;
+
+                        const className =
+                            newMatch[1].split('\\').pop()!;
+
                         if (KNOWN_MODEL_HINTS.has(className)) {
                             modelInstanceVars.set(varName, className);
                         }
@@ -120,10 +138,14 @@ export const directDbAccessRule: Rule = {
                         rightNode.type === 'scoped_call_expression' ||
                         rightNode.type === 'member_call_expression'
                     ) {
+
                         const root = resolveRootScope(rightNode);
 
                         if (isEloquentRoot(root)) {
-                            modelInstanceVars.set(varName, modelInstanceVars.get(root) ?? root);
+                            modelInstanceVars.set(
+                                varName,
+                                modelInstanceVars.get(root) ?? root
+                            );
                         }
                     }
                 }
@@ -138,42 +160,73 @@ export const directDbAccessRule: Rule = {
         // PASS 2 — DETEKSI VIOLATION
         // ─────────────────────────────────────────────
 
-        function getObjectRange(node: any): { start: number; end: number } | null {
-            if (node.type !== 'member_call_expression') return null;
+        function getObjectRange(
+            node: any
+        ): { start: number; end: number } | null {
+
+            if (node.type !== 'member_call_expression') {
+                return null;
+            }
 
             const obj = node.childForFieldName('object');
-            return obj ? { start: obj.startIndex, end: obj.endIndex } : null;
+
+            return obj
+                ? {
+                    start: obj.startIndex,
+                    end: obj.endIndex
+                }
+                : null;
         }
 
         function traverse(
             node: any,
             parentObjRange: { start: number; end: number } | null = null
         ) {
+
             const isCallNode =
                 node.type === 'scoped_call_expression' ||
                 node.type === 'member_call_expression';
 
             if (isCallNode) {
+
                 const isChainObject =
                     parentObjRange !== null &&
                     node.startIndex === parentObjRange.start &&
                     node.endIndex === parentObjRange.end;
 
                 if (!isChainObject) {
+
                     const root = resolveRootScope(node);
-                    const methodName = node.childForFieldName('name')?.text ?? '';
+
+                    const methodName =
+                        node.childForFieldName('name')?.text ?? '';
 
                     if (isEloquentRoot(root)) {
-                        const originModel = modelInstanceVars.get(root);
+
+                        const originModel =
+                            modelInstanceVars.get(root);
+
                         const scopeLabel = originModel
                             ? `${root} (instance of ${originModel})`
                             : root;
 
-                        const isDbTable = root === 'DB' && methodName === 'table';
+                        const isDbTable =
+                            root === 'DB' &&
+                            methodName === 'table';
 
                         const message = isDbTable
-                            ? `[Violation : Direct DB Access] Penggunaan DB::table() di Controller tidak diperbolehkan.`
-                            : `[Violation : Direct DB Access] Kueri '${methodName}' pada '${scopeLabel}' bocor di Controller. Pindahkan ke Service/Repository.`;
+
+                            ? `[Violation : Direct DB Access] Penggunaan DB::table() ` +
+                              `di Controller tidak diperbolehkan. ` +
+                              `Saran: Pindahkan logika akses database ke ` +
+                              `Repository atau Service layer agar Controller tetap ` +
+                              `berfokus pada proses request dan response.`
+
+                            : `[Violation : Direct DB Access] Query '${methodName}' ` +
+                              `pada '${scopeLabel}' bocor di Controller. ` +
+                              `Saran: Pindahkan logika query ke Repository ` +
+                              `atau Service layer untuk menjaga pemisahan ` +
+                              `tanggung jawab aplikasi.`;
 
                         violations.push({
                             node: node.childForFieldName('name') ?? node,
