@@ -3,7 +3,7 @@
   "displayName": "Laravel Code Smell Analyzer",
   "description": "Analyze Laravel code to detect code smells and architectural violations based on Clean Architecture principles.",
   "publisher": "vatech-dev",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.116.0"
