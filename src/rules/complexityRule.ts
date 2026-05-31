@@ -1,27 +1,39 @@
 import * as vscode from 'vscode';
 import { Rule, RuleViolation } from './types';
+import { ConfigManager } from '../manager/ConfigManager';
 
 export const complexityRule: Rule = {
     name: 'Cognitive Complexity',
 
     check(rootNode: any, document: vscode.TextDocument): RuleViolation[] {
+
         const violations: RuleViolation[] = [];
         const normalizedPath = document.uri.fsPath.replace(/\\/g, '/');
 
-        if (!normalizedPath.includes('app/Http/Controllers/')) return violations;
+        if (!normalizedPath.includes('app/Http/Controllers/')) {
+            return violations;
+        }
+
+        const config = ConfigManager.getConfig();
 
         function traverse(node: any) {
 
             if (node.type === 'method_declaration') {
 
-                const methodNameNode = node.childForFieldName('name');
-                const methodName = methodNameNode
-                    ? methodNameNode.text
-                    : 'unknown';
+                const methodNameNode =
+                    node.childForFieldName('name');
+
+                const methodName =
+                    methodNameNode
+                        ? methodNameNode.text
+                        : 'unknown';
 
                 let cognitiveScore = 0;
 
-                function calculate(childNode: any, depth: number) {
+                function calculate(
+                    childNode: any,
+                    depth: number
+                ) {
 
                     if (
                         childNode.type === 'anonymous_function_creation_expression' ||
@@ -35,6 +47,7 @@ export const complexityRule: Rule = {
                     // =========================
                     // TERNARY
                     // =========================
+
                     if (
                         childNode.type === 'conditional_expression' ||
                         childNode.type === 'ternary_expression'
@@ -42,10 +55,18 @@ export const complexityRule: Rule = {
 
                         cognitiveScore += 2 + depth;
 
-                        const forcedDepth = depth + 1;
+                        const forcedDepth =
+                            depth + 1;
 
-                        for (let i = 0; i < childNode.childCount; i++) {
-                            calculate(childNode.child(i), forcedDepth);
+                        for (
+                            let i = 0;
+                            i < childNode.childCount;
+                            i++
+                        ) {
+                            calculate(
+                                childNode.child(i),
+                                forcedDepth
+                            );
                         }
 
                         return;
@@ -54,15 +75,29 @@ export const complexityRule: Rule = {
                     // =========================
                     // IF
                     // =========================
-                    if (childNode.type === 'if_statement') {
 
-                        const parent = childNode.parent;
-                        const isElseIf = parent?.type === 'else_clause';
+                    if (
+                        childNode.type ===
+                        'if_statement'
+                    ) {
+
+                        const parent =
+                            childNode.parent;
+
+                        const isElseIf =
+                            parent?.type ===
+                            'else_clause';
 
                         if (!isElseIf) {
-                            cognitiveScore += 1 + depth;
-                            nextDepth = depth + 1;
+
+                            cognitiveScore +=
+                                1 + depth;
+
+                            nextDepth =
+                                depth + 1;
+
                         } else {
+
                             cognitiveScore += 1;
                         }
                     }
@@ -70,7 +105,10 @@ export const complexityRule: Rule = {
                     // =========================
                     // LOOP & CONTROL STRUCTURE
                     // =========================
-                    const weights: Record<string, number> = {
+
+                    const weights:
+                        Record<string, number> = {
+
                         'foreach_statement': 2,
                         'for_statement': 2,
                         'while_statement': 2,
@@ -78,24 +116,47 @@ export const complexityRule: Rule = {
                         'try_statement': 1
                     };
 
-                    if (weights[childNode.type]) {
-                        cognitiveScore += weights[childNode.type] + depth;
-                        nextDepth = depth + 1;
+                    if (
+                        weights[childNode.type]
+                    ) {
+
+                        cognitiveScore +=
+                            weights[childNode.type] +
+                            depth;
+
+                        nextDepth =
+                            depth + 1;
                     }
 
                     // =========================
                     // LOGICAL OPERATOR
                     // =========================
-                    if (childNode.type === 'binary_expression') {
+
+                    if (
+                        childNode.type ===
+                        'binary_expression'
+                    ) {
 
                         const ops =
-                            (childNode.text.match(/&&|\|\|/g) || []).length;
+                            (
+                                childNode.text.match(
+                                    /&&|\|\|/g
+                                ) || []
+                            ).length;
 
                         cognitiveScore += ops;
                     }
 
-                    for (let i = 0; i < childNode.childCount; i++) {
-                        calculate(childNode.child(i), nextDepth);
+                    for (
+                        let i = 0;
+                        i < childNode.childCount;
+                        i++
+                    ) {
+
+                        calculate(
+                            childNode.child(i),
+                            nextDepth
+                        );
                     }
                 }
 
@@ -104,41 +165,69 @@ export const complexityRule: Rule = {
                 // =========================
                 // HIGH COMPLEXITY
                 // =========================
-                if (cognitiveScore > 10) {
+
+                if (
+                    cognitiveScore >
+                    config.complexity.error
+                ) {
 
                     violations.push({
-                        node: methodNameNode || node,
+
+                        node:
+                            methodNameNode || node,
+
                         message:
                             `[Violation : High Complexity] Method '${methodName}' ` +
                             `memiliki kompleksitas tinggi (score: ${cognitiveScore}). ` +
+                            `(Threshold Error: ${config.complexity.error}). ` +
                             `Saran: Ekstrak bagian logika yang memiliki ` +
                             `kalang (loop) bersarang ke dalam private method ` +
                             `secara terpisah, atau gunakan teknik 'early return' ` +
                             `untuk mengurangi tingkat kedalaman (nesting) kode.`,
-                        code: 'HIGH_COGNITIVE_COMPLEXITY',
-                        severity: vscode.DiagnosticSeverity.Error
+
+                        code:
+                            'HIGH_COGNITIVE_COMPLEXITY',
+
+                        severity:
+                            vscode.DiagnosticSeverity.Error
                     });
 
                 // =========================
                 // WARNING COMPLEXITY
                 // =========================
-                } else if (cognitiveScore > 5) {
+
+                } else if (
+                    cognitiveScore >
+                    config.complexity.warning
+                ) {
 
                     violations.push({
-                        node: methodNameNode || node,
+
+                        node:
+                            methodNameNode || node,
+
                         message:
                             `[Violation : High Complexity] Method '${methodName}' ` +
                             `mulai sulit dipahami (score: ${cognitiveScore}). ` +
+                            `(Threshold Warning: ${config.complexity.warning}). ` +
                             `Saran: Sederhanakan percabangan dan hindari terlalu banyak ` +
                             `kondisi bersarang agar alur logika method lebih mudah ` +
                             `dipahami dan dipelihara.`,
-                        code: 'WARNING_COGNITIVE_COMPLEXITY',
-                        severity: vscode.DiagnosticSeverity.Warning
+
+                        code:
+                            'WARNING_COGNITIVE_COMPLEXITY',
+
+                        severity:
+                            vscode.DiagnosticSeverity.Warning
                     });
                 }
             }
 
-            for (let i = 0; i < node.childCount; i++) {
+            for (
+                let i = 0;
+                i < node.childCount;
+                i++
+            ) {
                 traverse(node.child(i));
             }
         }

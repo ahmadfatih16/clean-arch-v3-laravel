@@ -38,6 +38,10 @@
       {
         "command": "laravel-clean-arch.showSummary",
         "title": "CSmell: Show Summary"
+      },
+      {
+        "command": "laravel-clean-arch.config",
+        "title": "CSmell: Config"
       }
     ]
   },
