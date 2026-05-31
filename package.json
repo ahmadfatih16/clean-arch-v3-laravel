@@ -29,7 +29,18 @@
     "onLanguage:php"
   ],
   "main": "./dist/extension.js",
-  "contributes": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "laravel-clean-arch.refactorToService",
+        "title": "Laravel Clean Arch: Refactor To Service"
+      },
+      {
+        "command": "laravel-clean-arch.showSummary",
+        "title": "CSmell: Show Summary"
+      }
+    ]
+  },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "webpack --mode production",
