@@ -42,6 +42,10 @@
       {
         "command": "laravel-clean-arch.config",
         "title": "CSmell: Config"
+      },
+      {
+        "command": "laravel-clean-arch.manageIgnoredViolations",
+        "title": "CSmell: Manage Ignored Violations"
       }
     ]
   },

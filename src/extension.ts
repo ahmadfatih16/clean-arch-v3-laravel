@@ -5,6 +5,7 @@ import { RefactorEngine } from './engine/RefactorEngine';
 import { TreeSitterParser } from './parsing/TreeSitterParser';
 import { SummaryManager } from './manager/SummaryManager';
 import { ConfigManager } from './manager/ConfigManager';
+import { IgnoreManager } from './manager/IgnoreManager';
 
 export async function activate(
     context: vscode.ExtensionContext
@@ -140,6 +141,46 @@ export async function activate(
         )
     );
 
+    // ========================================
+    // IGNORE VIOLATION COMMAND
+    // ========================================
+
+    context.subscriptions.push(
+
+        vscode.commands.registerCommand(
+            'laravel-clean-arch.ignoreViolation',
+
+            async (
+                document: vscode.TextDocument,
+                diagnostic: vscode.Diagnostic
+            ) => {
+
+                await IgnoreManager
+                    .ignoreViolation(
+                        document,
+                        diagnostic
+                    );
+            }
+        )
+    );
+
+    // ========================================
+    // MANAGE IGNORED VIOLATIONS COMMAND
+    // ========================================
+
+    context.subscriptions.push(
+
+        vscode.commands.registerCommand(
+            'laravel-clean-arch.manageIgnoredViolations',
+
+            async () => {
+
+                await IgnoreManager
+                    .manageIgnoredViolations();
+            }
+        )
+    );
+
     console.log(
         'Laravel Code Smell Analyzer ACTIVE'
     );
@@ -163,3 +204,5 @@ function updateDiagnostics(
         );
     }
 }
+
+export function deactivate() {}
