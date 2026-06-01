@@ -104,7 +104,54 @@ export class ConfigManager {
         );
     }
 
+    public static resetToDefault(): void {
+
+        this.saveConfig(
+            this.DEFAULT_CONFIG
+        );
+
+        vscode.window.showInformationMessage(
+            'Configuration restored to default values.'
+        );
+    }
+
     public static async showConfigMenu(): Promise<void> {
+
+        const action =
+            await vscode.window.showQuickPick([
+                'Configure Rules',
+                'Reset To Default'
+            ], {
+                placeHolder:
+                    'Select action'
+            });
+
+        if (!action) {
+            return;
+        }
+
+        if (
+            action ===
+            'Reset To Default'
+        ) {
+
+            const confirmation =
+                await vscode.window.showWarningMessage(
+                    'Reset all configuration to default values?',
+                    { modal: true },
+                    'Reset'
+                );
+
+            if (
+                confirmation ===
+                'Reset'
+            ) {
+
+                this.resetToDefault();
+            }
+
+            return;
+        }
 
         const config =
             this.getConfig();
@@ -117,7 +164,10 @@ export class ConfigManager {
                 'Fat Controller - Dependencies',
                 'Complexity - Warning',
                 'Complexity - Error'
-            ]);
+            ], {
+                placeHolder:
+                    'Select rule'
+            });
 
         if (!selected) {
             return;
